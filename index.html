@@ -1751,6 +1751,40 @@ window.addEventListener('load', () => {
     console.error('[AUTO START ERROR]', e);
   }
 });
+// ===== 啟動模擬（保命版）=====
+resizeCanvasToCSS();
+window.addEventListener('resize', resizeCanvasToCSS);
+
+// 每秒邏輯
+setInterval(() => {
+  if (!paused) tick1s();
+}, 1000);
+
+// 畫面 loop
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  const g = geom();
+  const sig = signals();
+
+  if (!paused){
+    spawnCar(g);
+    updateCars(dt, sig, g);
+  }
+
+  drawRoad(g);
+  drawSignals(sig, g);
+  drawCars();
+  updateUI(sig);
+
+  requestAnimationFrame(loop);
+}
+
+let paused = false;
+requestAnimationFrame(loop);
+
 </script>
 </body>
 </html>
