@@ -1723,7 +1723,34 @@ let __started = false;
   }
 })();
 /* ================================================================ */
+// ===== GitHub Pages AUTO START (FINAL FIX) =====
+window.addEventListener('load', () => {
+  try {
+    // 強制啟動模擬
+    if (typeof SIM !== 'undefined') {
+      SIM.running = true;
+    }
 
+    // 強制給初始相位
+    if (typeof FSM !== 'undefined' && !FSM.currentPhase) {
+      FSM.currentPhase = PH.M1S_G || PH.M1_G;
+      FSM.remaining = Number(
+        document.getElementById('tM1SG')?.value || 25
+      );
+    }
+
+    // 啟動主循環
+    if (typeof mainLoop === 'function') {
+      requestAnimationFrame(mainLoop);
+    } else if (typeof loop === 'function') {
+      requestAnimationFrame(loop);
+    }
+
+    console.log('[AUTO START] Simulation started');
+  } catch (e) {
+    console.error('[AUTO START ERROR]', e);
+  }
+});
 </script>
 </body>
 </html>
