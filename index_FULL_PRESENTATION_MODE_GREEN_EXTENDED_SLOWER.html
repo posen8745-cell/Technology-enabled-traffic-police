@@ -1,0 +1,1480 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>T字路口｜順暢版：半重疊 + spawn每秒制 + CLEAR不降速（含左右10秒、下方20秒）</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#121a2b;
+      --text:#e8eefc;
+      --muted:#a9b6d6;
+      --line:#2a3553;
+      --good:#3cff7a;
+      --bad:#ff3b3b;
+      --warn:#ffd43b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial;
+      background: radial-gradient(1200px 800px at 30% 20%, #18234a 0%, var(--bg) 55%, #060a14 100%);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+    }
+    .wrap{
+      width:min(1320px, 100%);
+      margin:0 auto;
+      padding:18px;
+      display:grid;
+      grid-template-columns: 1fr 460px;
+      gap:16px;
+      align-items:start;
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
+      overflow:hidden;
+    }
+    .canvasWrap{ padding:12px; }
+    canvas{
+      width:100%;
+      height:680px;
+      display:block;
+      background: rgba(0,0,0,0.18);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .panel{ padding:14px; background: rgba(0,0,0,0.12); }
+    h1{ font-size:15px; margin:0 0 10px 0; letter-spacing:.4px; line-height:1.35;}
+    .pill{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.18);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom:8px;
+    }
+    .dot{width:10px;height:10px;border-radius:50%;}
+    .dot.green{background:var(--good)}
+    .dot.red{background:var(--bad)}
+    .dot.yellow{background:var(--warn)}
+    .divider{ height:1px; background: rgba(255,255,255,0.10); margin: 12px 0; }
+    .row{ display:flex; gap:10px; align-items:center; justify-content:space-between; margin:10px 0; }
+    label{ font-size: 13px; color: var(--muted); }
+    input[type="number"]{
+      width: 190px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.22);
+      color: var(--text);
+      outline:none;
+    }
+    .btns{ display:flex; gap:10px; margin-top:12px; }
+    button{
+      flex:1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+      color: var(--text);
+      cursor:pointer;
+      font-weight: 600;
+    }
+    button:hover{filter:brightness(1.08)}
+    button:disabled{opacity:.55; cursor:not-allowed; filter:none}
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px;
+      align-items:center;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+    .tiny{ font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .subcard{
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(0,0,0,0.16);
+      margin-top: 10px;
+      transition: opacity .15s ease, filter .15s ease;
+    }
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top: 8px;
+    }
+    .checkrow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin: 6px 0;
+    }
+    input[type="checkbox"]{ transform: scale(1.1); }
+    .note{
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.55;
+      margin-top:10px;
+    }
+    code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      font-size: 12px;
+      color: #d6e1ff;
+      background: rgba(0,0,0,0.22);
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    /* ✅ 早上/晚上、右斑馬線 有/無 按鈕 */
+    .modeBtns{
+      display:flex;
+      gap:10px;
+      margin-top: 6px;
+    }
+    .modeBtn{
+      flex:1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      color: var(--text);
+      cursor:pointer;
+      font-weight: 800;
+      letter-spacing: .6px;
+    }
+    .modeBtn.active{
+      border-color: rgba(60,255,140,0.65);
+      box-shadow: 0 0 0 2px rgba(60,255,140,0.20) inset;
+      background: linear-gradient(180deg, rgba(60,255,140,0.18), rgba(0,0,0,0.10));
+    }
+    .modeBtn:disabled{opacity:.55; cursor:not-allowed; box-shadow:none}
+
+    /* ✅ 右斑馬線關閉時：灰掉整塊卡片 */
+    .subcard.disabled{
+      opacity: .45;
+      filter: grayscale(1);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card canvasWrap">
+      <canvas id="c"></canvas>
+    </div>
+
+    <div class="card panel">
+      <h1>
+        ✅ 順暢版：主線1「半重疊」（轉彎綠也放直行）＋✅ 排隊跟車（不穿越前車）<br/>
+        ✅ spawn 每秒制（不跟 FPS 綁定）＋✅ 行人 WALK/CLEAR 不再全域擋車（只擋衝突方向）<br/>
+        ✅ 行人：左/下固定（右可切換有/無）<br/>
+        建議 spawn 0.18~0.25；≥0.35 仍可能超飽和。
+      </h1>
+
+      <div class="pill">
+        <span class="dot green" id="phaseDot"></span>
+        <span id="phaseText">Phase：主線1 直行綠</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <label>自動切模式（依排隊）</label>
+        <input type="checkbox" id="autoMode" checked />
+      </div>
+      <div class="tiny" id="autoHint" style="margin-top:-6px;">
+        Auto：觀察停止線前排隊數，在每輪開始決定 AM/MID/PM2（含滯後避免抖動）
+      </div>
+
+      <!-- ✅ 早上 / 晚上 兩個按鈕 -->
+      <div class="modeBtns">
+        <button class="modeBtn" id="btnMorning">早上</button>
+        <button class="modeBtn" id="btnEvening">晚上</button>
+      </div>
+      <div class="tiny" id="manualHint" style="margin-top:6px;">
+        手動：按下「早上/晚上」會直接套用（並自動關掉 Auto）。
+      </div>
+
+      <!-- ✅ 右斑馬線 有 / 無 -->
+      <div class="modeBtns" style="margin-top:10px;">
+        <button class="modeBtn" id="btnRightXwalkOn">有右斑馬線</button>
+        <button class="modeBtn" id="btnRightXwalkOff">無右斑馬線</button>
+      </div>
+      <div class="tiny" id="xwalkHint" style="margin-top:6px;">
+        右斑馬線：切換後會立刻影響行人序列（左→〔右可選〕→下）。
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <label>主線1 直行綠（M1_SG）</label>
+        <input type="number" id="tM1SG" min="10" max="120" value="25" />
+      </div>
+      <div class="row">
+        <label>主線1 轉彎綠（M1_TG）</label>
+        <input type="number" id="tM1TG" min="6" max="90" value="20" />
+      </div>
+      <div class="row">
+        <label>主線1 黃（M1_Y）</label>
+        <input type="number" id="tM1Y" min="2" max="10" value="3" />
+      </div>
+
+      <div class="row">
+        <label>主線2 混放綠（M2_G）</label>
+        <input type="number" id="tM2G" min="10" max="120" value="35" />
+      </div>
+      <div class="row">
+        <label>主線2 黃（M2_Y）</label>
+        <input type="number" id="tM2Y" min="2" max="10" value="3" />
+      </div>
+
+      <div class="row">
+        <label>全紅緩衝（AR）</label>
+        <input type="number" id="tAR" min="1" max="15" value="1" />
+      </div>
+
+      <div class="row">
+        <label>車流生成率（0~1）</label>
+        <input type="number" id="spawn" min="0" max="1" step="0.05" value="0.20" />
+      </div>
+
+      <div class="subcard">
+        <div class="tiny">
+          行人序列：左→（右可選）→下。每條會跑 <code>WALK</code> 再跑 <code>CLEAR</code>。<br/>
+          WALK/CLEAR 期間：只擋「衝突方向車流」，其他車流照走（避免全靜止）。
+        </div>
+
+        <div class="grid2">
+          <div class="subcard" style="margin:0;">
+            <div class="checkrow">
+              <label>左斑馬線</label><input type="checkbox" id="pLeftOn" checked />
+            </div>
+            <div class="row"><label>WALK</label><input type="number" id="pLeftWalk" min="3" max="60" value="10" /></div>
+            <div class="row"><label>CLEAR</label><input type="number" id="pLeftClr" min="2" max="30" value="6" /></div>
+          </div>
+
+          <!-- ✅ 右斑馬線卡片：可被整塊灰掉 -->
+          <div class="subcard" id="rightPedCard" style="margin:0;">
+            <div class="checkrow">
+              <label>右斑馬線</label><input type="checkbox" id="pRightOn" checked />
+            </div>
+            <div class="row"><label>WALK</label><input type="number" id="pRightWalk" min="3" max="60" value="10" /></div>
+            <div class="row"><label>CLEAR</label><input type="number" id="pRightClr" min="2" max="30" value="6" /></div>
+          </div>
+
+          <div class="subcard" style="margin:0; grid-column:1 / span 2;">
+            <div class="checkrow">
+              <label>下方斑馬線</label><input type="checkbox" id="pBottomOn" checked />
+            </div>
+            <div class="row"><label>WALK</label><input type="number" id="pBottomWalk" min="3" max="60" value="20" /></div>
+            <div class="row"><label>CLEAR</label><input type="number" id="pBottomClr" min="2" max="30" value="8" /></div>
+          </div>
+        </div>
+
+        <div class="note">
+          ✅ Auto 會依排隊判斷：<br/>
+          - 右主線左轉隊列最大 → AM（早上）<br/>
+          - 主2右轉隊列最大 → PM2（晚上）<br/>
+          - 其他 → MID（均衡）<br/><br/>
+          ※ 行人秒數固定（左 10/6、右 10/6、下 20/8），右斑馬線可切換「有/無」。
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="toggle">暫停</button>
+        <button id="reset">重置</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="kv"><div>主線1 車燈</div><div class="mono" id="sigM1">GREEN</div></div>
+      <div class="kv"><div>主線2 車燈</div><div class="mono" id="sigM2">RED</div></div>
+      <div class="kv"><div>行人狀態</div><div class="mono" id="sigPed">STOP</div></div>
+      <div class="kv"><div>本相位剩餘秒</div><div class="mono" id="count">--</div></div>
+      <div class="kv"><div>排隊(估)</div><div class="mono" id="qText">--</div></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const $ = (id) => document.getElementById(id);
+
+  const ui = {
+    tM1SG: $('tM1SG'),
+    tM1TG: $('tM1TG'),
+    tM1Y: $('tM1Y'),
+    tM2G: $('tM2G'), tM2Y: $('tM2Y'),
+    tAR: $('tAR'),
+    spawn: $('spawn'),
+
+    pLeftOn: $('pLeftOn'), pRightOn: $('pRightOn'), pBottomOn: $('pBottomOn'),
+    pLeftWalk: $('pLeftWalk'), pLeftClr: $('pLeftClr'),
+    pRightWalk: $('pRightWalk'), pRightClr: $('pRightClr'),
+    pBottomWalk: $('pBottomWalk'), pBottomClr: $('pBottomClr'),
+
+    rightPedCard: $('rightPedCard'),
+
+    autoMode: $('autoMode'),
+    autoHint: $('autoHint'),
+    qText: $('qText'),
+
+    btnMorning: $('btnMorning'),
+    btnEvening: $('btnEvening'),
+    manualHint: $('manualHint'),
+
+    btnRightXwalkOn: $('btnRightXwalkOn'),
+    btnRightXwalkOff: $('btnRightXwalkOff'),
+    xwalkHint: $('xwalkHint'),
+
+    toggle: $('toggle'), reset: $('reset'),
+
+    phaseDot: $('phaseDot'), phaseText: $('phaseText'),
+    sigM1: $('sigM1'), sigM2: $('sigM2'),
+    sigPed: $('sigPed'), count: $('count'),
+  };
+
+  const SIG = { RED:'RED', YELLOW:'YELLOW', GREEN:'GREEN' };
+
+  // ===== JSON Config Loader =====
+  let CONFIG = null;
+
+  async function loadConfig(){
+    const res = await fetch('./config/intersection_I001.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Config load failed: HTTP ${res.status} ${res.statusText}`);
+    CONFIG = await res.json();
+    console.log('✅ CONFIG loaded:', CONFIG);
+    return CONFIG;
+  }
+
+  function applyConfigToUI(cfg){
+    if (!cfg) return;
+
+    const t = cfg.timing || {};
+    if (t.M1_SG != null) ui.tM1SG.value = t.M1_SG;
+    else if (t.M1_G != null) ui.tM1SG.value = t.M1_G;
+    if (t.M1_TG != null) ui.tM1TG.value = t.M1_TG;
+
+    if (t.M1_Y != null) ui.tM1Y.value = t.M1_Y;
+    if (t.M2_G != null) ui.tM2G.value = t.M2_G;
+    if (t.M2_Y != null) ui.tM2Y.value = t.M2_Y;
+    if (t.AR   != null) ui.tAR.value  = t.AR;
+
+    if (cfg.spawn != null) ui.spawn.value = cfg.spawn;
+
+    const p = cfg.ped || {};
+    const setPed = (key, onEl, wEl, cEl) => {
+      if (!p[key]) return;
+      if (p[key].enabled != null) onEl.checked = !!p[key].enabled;
+      if (p[key].WALK    != null) wEl.value = p[key].WALK;
+      if (p[key].CLEAR   != null) cEl.value = p[key].CLEAR;
+    };
+    setPed('LEFT',   ui.pLeftOn,   ui.pLeftWalk,   ui.pLeftClr);
+    setPed('RIGHT',  ui.pRightOn,  ui.pRightWalk,  ui.pRightClr);
+    setPed('BOTTOM', ui.pBottomOn, ui.pBottomWalk, ui.pBottomClr);
+  }
+
+  function resizeCanvasToCSS(){
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width * dpr));
+    const h = Math.max(1, Math.round(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+  }
+
+  function clampInt(v,min,max){
+    const n = Math.round(Number(v)||0);
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function getDur(){
+    return {
+      M1SG: clampInt(ui.tM1SG.value, 10, 120),
+      M1TG: clampInt(ui.tM1TG.value, 6, 90),
+      M1Y:  clampInt(ui.tM1Y.value,  2, 10),
+      M2G:  clampInt(ui.tM2G.value,  10, 120),
+      M2Y:  clampInt(ui.tM2Y.value,  2, 10),
+      AR:   clampInt(ui.tAR.value,   1, 15),
+    };
+  }
+
+  // Geometry (T)
+  function geom(){
+    const rect = canvas.getBoundingClientRect();
+    const W = rect.width, H = rect.height;
+
+    const road = {
+      y: Math.round(H*0.38),
+      h: 150,
+      x: Math.round(W*0.52),
+      w: 240,
+    };
+    const inter = {
+      x0: road.x-road.w/2,
+      x1: road.x+road.w/2,
+      y0: road.y-road.h/2,
+      y1: road.y+road.h/2,
+    };
+
+    const lane = {
+      m1_east_y: road.y + 22,
+      m1_west_y: road.y - 22,
+      stem_out_x: [road.x - 48, road.x - 20],
+      stem_in_x:  [road.x + 20, road.x + 48],
+    };
+
+    const stop = {
+      m1_left: inter.x0 - 22,
+      m1_right: inter.x1 + 22,
+      m2_in: inter.y1 + 22,
+    };
+
+    const xwalk = {
+      left:   { x: inter.x0 - 55, y: road.y-road.h/2 + 8, w: 42, h: road.h-16 },
+      right:  { x: inter.x1 + 13, y: road.y-road.h/2 + 8, w: 42, h: road.h-16 },
+      bottom: { x: road.x-road.w/2 + 8, y: inter.y1 + 14, w: road.w-16, h: 42 },
+    };
+
+    return { W,H,road,inter,lane,stop,xwalk };
+  }
+
+  // ===== 右斑馬線 有/無 切換 =====
+  let rightXwalkEnabled = true;
+
+  function setRightXwalk(enabled){
+    rightXwalkEnabled = !!enabled;
+
+    // 勾選框跟著走（但右卡片可能被灰掉）
+    ui.pRightOn.checked = rightXwalkEnabled;
+
+    // 按鈕 active
+    ui.btnRightXwalkOn?.classList.toggle('active', rightXwalkEnabled);
+    ui.btnRightXwalkOff?.classList.toggle('active', !rightXwalkEnabled);
+
+    // 右卡片整塊灰掉 + disable
+    if (ui.rightPedCard){
+      ui.rightPedCard.classList.toggle('disabled', !rightXwalkEnabled);
+    }
+
+    // 立刻更新行人序列與 remaining
+    softApply();
+
+    if (ui.xwalkHint){
+      ui.xwalkHint.textContent = rightXwalkEnabled
+        ? '右斑馬線：目前「有」— 行人序列：左→右→下'
+        : '右斑馬線：目前「無」— 行人序列：左→下（跳過右）';
+    }
+  }
+
+  // Ped sequence (left -> (right optional) -> bottom)
+  let pedSteps = [];
+  let pedIndex = 0;
+
+  function buildPedSteps(){
+    const steps = [];
+    const add = (name, on, walkEl, clrEl) => {
+      if (!on) return;
+      const w = clampInt(walkEl.value, 3, 60);
+      const c = clampInt(clrEl.value, 2, 30);
+      steps.push({ key:`${name}_WALK`, dur:w });
+      steps.push({ key:`${name}_CLEAR`, dur:c });
+    };
+
+    // ✅ 左一定照勾選
+    add('LEFT', ui.pLeftOn.checked, ui.pLeftWalk, ui.pLeftClr);
+
+    // ✅ 右：由 rightXwalkEnabled 決定「是否加入序列」
+    if (rightXwalkEnabled){
+      add('RIGHT', ui.pRightOn.checked, ui.pRightWalk, ui.pRightClr);
+    }
+
+    // ✅ 下照勾選
+    add('BOTTOM', ui.pBottomOn.checked, ui.pBottomWalk, ui.pBottomClr);
+
+    if (steps.length === 0) steps.push({ key:'NONE_CLEAR', dur: 2 });
+    return steps;
+  }
+
+  // ===== Phases =====
+  const PH = {
+    M1S_G:'M1S_G',
+    M1S_Y:'M1S_Y',
+    AR1:'AR1',
+    M1T_G:'M1T_G',
+    M1T_Y:'M1T_Y',
+    AR1B:'AR1B',
+
+    M2_G:'M2_G', M2_Y:'M2_Y', AR2:'AR2',
+    PSEQ:'PSEQ', AR3:'AR3',
+  };
+
+  let phase = PH.M1S_G;
+  let remaining = 0;
+
+  function durationForPhase(ph){
+    const d = getDur();
+    switch(ph){
+      case PH.M1S_G: return d.M1SG;
+      case PH.M1T_G: return d.M1TG;
+      case PH.M1S_Y:
+      case PH.M1T_Y: return d.M1Y;
+      case PH.M2_G:  return d.M2G;
+      case PH.M2_Y:  return d.M2Y;
+      case PH.PSEQ:  return (pedSteps[pedIndex]?.dur ?? d.AR);
+      default:       return d.AR;
+    }
+  }
+
+  function nextPhase(ph){
+    switch(ph){
+      case PH.M1S_G:  return PH.M1S_Y;
+      case PH.M1S_Y:  return PH.AR1;
+      case PH.AR1:    return PH.M1T_G;
+      case PH.M1T_G:  return PH.M1T_Y;
+      case PH.M1T_Y:  return PH.AR1B;
+      case PH.AR1B:   return PH.M2_G;
+
+      case PH.M2_G:   return PH.M2_Y;
+      case PH.M2_Y:   return PH.AR2;
+      case PH.AR2:    return PH.PSEQ;
+
+      case PH.PSEQ:   return PH.AR3;
+      default:        return PH.M1S_G;
+    }
+  }
+
+  function enterPhase(newPhase){
+    phase = newPhase;
+
+    if (phase === PH.PSEQ){
+      pedSteps = buildPedSteps();
+      pedIndex = 0;
+      remaining = pedSteps[pedIndex].dur;
+      return;
+    }
+    remaining = durationForPhase(phase);
+  }
+
+  // ===== Signals =====
+  function activePedStep(){
+    if (phase !== PH.PSEQ) return null;
+    return pedSteps[pedIndex] || { key:'NONE_CLEAR', dur: 0 };
+  }
+
+  function signals(){
+    const all = {
+      m1: SIG.RED,
+      m2: SIG.RED,
+      pedLeft: 'STOP',
+      pedRight: 'STOP',
+      pedBottom: 'STOP',
+      pedMode: 'NONE',
+      pedWhich: 'NONE',
+    };
+
+    if (phase === PH.PSEQ){
+      const step = activePedStep();
+      const s = { ...all };
+      const isWalk = step.key.endsWith('_WALK');
+      const isClear = step.key.endsWith('_CLEAR');
+
+      if (step.key.startsWith('LEFT_')){
+        s.pedLeft = isWalk ? 'WALK' : (isClear ? 'CLEAR' : 'STOP');
+        s.pedWhich = 'LEFT';
+      } else if (step.key.startsWith('RIGHT_')){
+        s.pedRight = isWalk ? 'WALK' : (isClear ? 'CLEAR' : 'STOP');
+        s.pedWhich = 'RIGHT';
+      } else if (step.key.startsWith('BOTTOM_')){
+        s.pedBottom = isWalk ? 'WALK' : (isClear ? 'CLEAR' : 'STOP');
+        s.pedWhich = 'BOTTOM';
+      } else {
+        s.pedWhich = 'NONE';
+      }
+      s.pedMode = isWalk ? 'WALK' : (isClear ? 'CLEAR' : 'NONE');
+      return s;
+    }
+
+    if (phase === PH.M1S_G || phase === PH.M1T_G) return { ...all, m1: SIG.GREEN };
+    if (phase === PH.M1S_Y || phase === PH.M1T_Y) return { ...all, m1: SIG.YELLOW };
+
+    if (phase === PH.M2_G)  return { ...all, m2: SIG.GREEN };
+    if (phase === PH.M2_Y)  return { ...all, m2: SIG.YELLOW };
+
+    return all;
+  }
+
+  // ===== Cars =====
+  const cars = [];
+  const CAR_W = 22, CAR_H = 14;
+
+  function rnd(a,b){ return a + Math.random()*(b-a); }
+
+  function stopLine(car, g){
+    if (car.kind === 'M1L') return g.stop.m1_left;
+    if (car.kind === 'M1R') return g.stop.m1_right;
+    return g.stop.m2_in; // M2
+  }
+
+  function pastStop(car, g){
+    const s = stopLine(car, g);
+    if (car.kind === 'M1L') return car.x > s;
+    if (car.kind === 'M1R') return car.x < s;
+    return car.y < s;
+  }
+
+  function approachingStop(car, g){
+    const s = stopLine(car, g);
+    if (car.kind === 'M1L') return car.x + car.w/2 >= s - 2;
+    if (car.kind === 'M1R') return car.x - car.w/2 <= s + 2;
+    return car.y - car.h/2 <= s + 2;
+  }
+
+  // ✅ 行人衝突：WALK/CLEAR 都只擋「衝突方向」，避免全靜止
+  function pedAllowsCar(car, sig){
+    if (phase !== PH.PSEQ) return true;
+
+    const which = sig.pedWhich;  // LEFT / RIGHT / BOTTOM
+    const mode  = sig.pedMode;   // WALK / CLEAR / NONE
+
+    if (mode === 'NONE') return true;
+
+    if (which === 'LEFT'   && car.kind === 'M1L') return false;
+    if (which === 'RIGHT'  && car.kind === 'M1R') return false;
+    if (which === 'BOTTOM' && car.kind === 'M2')  return false;
+
+    return true;
+  }
+
+  // ===== Auto Mode + 手動早晚按鈕 =====
+  const MODES = {
+    AM:  { name:'早上（右主線左轉40% / 主2右轉30%）', M1_SG: 22, M1_TG: 40, M2_G: 34, spawn: 0.22 },
+    MID: { name:'平峰（均衡）',                         M1_SG: 26, M1_TG: 28, M2_G: 38, spawn: 0.20 },
+    PM2: { name:'晚上（主2右轉40% / 右主線左轉30%）',   M1_SG: 20, M1_TG: 28, M2_G: 55, spawn: 0.22 },
+  };
+
+  let currentAutoMode = 'MID';
+  let modeHoldSec = 0;
+  const MIN_HOLD_SEC = 60;
+  const SWITCH_MARGIN = 3;
+
+  function setModeButtonActive(modeKey){
+    ui.btnMorning?.classList.toggle('active', modeKey === 'AM');
+    ui.btnEvening?.classList.toggle('active', modeKey === 'PM2');
+    if (modeKey === 'MID'){
+      ui.btnMorning?.classList.remove('active');
+      ui.btnEvening?.classList.remove('active');
+    }
+  }
+
+  function syncModeControls(){
+    const autoOn = !!ui.autoMode?.checked;
+    ui.btnMorning && (ui.btnMorning.disabled = autoOn);
+    ui.btnEvening && (ui.btnEvening.disabled = autoOn);
+    if (ui.manualHint){
+      ui.manualHint.textContent = autoOn
+        ? '手動：Auto 開啟中（早上/晚上按鈕已鎖定）'
+        : '手動：按下「早上/晚上」會直接套用（並自動關掉 Auto）。';
+    }
+  }
+
+  function applyMode(modeKey){
+    const m = MODES[modeKey];
+    if (!m) return;
+
+    ui.tM1SG.value = m.M1_SG;
+    ui.tM1TG.value = m.M1_TG;
+    ui.tM2G.value  = m.M2_G;
+    ui.spawn.value = m.spawn;
+
+    // ✅ 行人秒數固定（不強制開關右斑馬線）
+    ui.pLeftOn.checked = true;
+    ui.pLeftWalk.value = 10;
+    ui.pLeftClr.value  = 6;
+
+    ui.pRightWalk.value = 10;
+    ui.pRightClr.value  = 6;
+
+    ui.pBottomOn.checked = true;
+    ui.pBottomWalk.value = 20;
+    ui.pBottomClr.value  = 8;
+
+    softApply();
+
+    currentAutoMode = modeKey;
+    modeHoldSec = 0;
+
+    setModeButtonActive(modeKey);
+    if (ui.autoHint) ui.autoHint.textContent = `Auto：目前模式 ${modeKey}｜${m.name}`;
+  }
+
+  function measureQueues(g){
+    let m1TurnQ = 0, m1StraightQ = 0;
+    let m2Q = 0, m2RightQ = 0, m2LeftQ = 0;
+
+    for (const c of cars){
+      if (pastStop(c, g)) continue;
+
+      if (c.kind === 'M1L' || c.kind === 'M1R'){
+        const s = stopLine(c, g);
+        const dist = (c.kind === 'M1L') ? (s - c.x) : (c.x - s);
+        if (dist < -30) continue;
+        if (dist > 260) continue;
+
+        if (c.route === 'down') m1TurnQ++;
+        else m1StraightQ++;
+      }
+
+      if (c.kind === 'M2'){
+        const s = stopLine(c, g);
+        const dist = (c.y - s);
+        if (dist < -30) continue;
+        if (dist > 260) continue;
+
+        m2Q++;
+        if (c.route === 'toRight') m2RightQ++;
+        else if (c.route === 'toLeft') m2LeftQ++;
+      }
+    }
+
+    return { m1TurnQ, m1StraightQ, m2Q, m2RightQ, m2LeftQ };
+  }
+
+  function chooseModeByQueues(q){
+    const { m1TurnQ, m1StraightQ, m2Q, m2RightQ } = q;
+    if (m2RightQ >= Math.max(m1TurnQ, m1StraightQ) + SWITCH_MARGIN) return 'PM2';
+    if (m1TurnQ >= Math.max(m2Q, m1StraightQ) + SWITCH_MARGIN) return 'AM';
+    return 'MID';
+  }
+
+  function spawnCar(g){
+    const p = Number(ui.spawn.value);
+    if (Math.random() > p) return;
+
+    const sp = rnd(95, 145);
+
+    // ✅ 依目前模式套用早晚比例
+    let base = { m1rLeft: 0.35, m2Right: 0.35, others: 0.30 };
+    if (currentAutoMode === 'AM')  base = { m1rLeft: 0.40, m2Right: 0.30, others: 0.30 };
+    if (currentAutoMode === 'PM2') base = { m1rLeft: 0.30, m2Right: 0.40, others: 0.30 };
+
+    const r = Math.random();
+
+    if (r < base.m1rLeft){
+      cars.push({
+        kind:'M1R',
+        route:'down',
+        x: g.W + 80,
+        y: g.lane.m1_west_y,
+        vx: -sp, vy: 0,
+        w: CAR_W, h: CAR_H,
+        turned: false,
+      });
+      return;
+    }
+
+    if (r < base.m1rLeft + base.m2Right){
+      cars.push({
+        kind:'M2',
+        laneIdx: 1,
+        route: 'toRight',
+        x: g.lane.stem_in_x[1],
+        y: g.H + 90,
+        vx: 0, vy: -sp,
+        w: CAR_H, h: CAR_W,
+        turned: false,
+      });
+      return;
+    }
+
+    const rr = Math.random();
+    if (rr < 0.50){
+      cars.push({
+        kind:'M1R',
+        route:'straight',
+        x: g.W + 80,
+        y: g.lane.m1_west_y,
+        vx: -sp, vy: 0,
+        w: CAR_W, h: CAR_H,
+        turned: false,
+      });
+    } else if (rr < 0.85){
+      cars.push({
+        kind:'M2',
+        laneIdx: 0,
+        route: 'toLeft',
+        x: g.lane.stem_in_x[0],
+        y: g.H + 90,
+        vx: 0, vy: -sp,
+        w: CAR_H, h: CAR_W,
+        turned: false,
+      });
+    } else {
+      const turnDown = (Math.random() < 0.20);
+      cars.push({
+        kind:'M1L',
+        route: turnDown ? 'down' : 'straight',
+        x: -80,
+        y: g.lane.m1_east_y,
+        vx: sp, vy: 0,
+        w: CAR_W, h: CAR_H,
+        turned: false,
+      });
+    }
+  }
+
+  function allowedBySignal(car, sig, g){
+    if (phase === PH.PSEQ){
+      return pedAllowsCar(car, sig);
+    }
+
+    // 主線1
+    if (car.kind === 'M1L' || car.kind === 'M1R'){
+      if (sig.m1 === SIG.YELLOW) return pastStop(car, g);
+      if (sig.m1 !== SIG.GREEN) return false;
+
+      if (phase === PH.M1S_G){
+        if (pastStop(car, g)) return true;
+        return car.route === 'straight';
+      }
+      if (phase === PH.M1T_G){
+        if (pastStop(car, g)) return true;
+        return (car.route === 'down' || car.route === 'straight');
+      }
+      return false;
+    }
+
+    // 主線2
+    if (car.kind === 'M2'){
+      if (sig.m2 === SIG.GREEN) return true;
+      if (sig.m2 === SIG.YELLOW) return pastStop(car, g);
+      return false;
+    }
+
+    return false;
+  }
+
+  // ===== 排隊跟車 =====
+  const SAFE_GAP = 10;
+
+  function laneKey(car){
+    if (car.kind === 'M1L') return 'M1L';
+    if (car.kind === 'M1R') return 'M1R';
+    if (car.kind === 'M2')  return `M2_${car.laneIdx}`;
+    return null;
+  }
+
+  function sCoord(car){
+    if (car.kind === 'M1L') return car.x;
+    if (car.kind === 'M1R') return -car.x;
+    if (car.kind === 'M2')  return -car.y;
+    return 0;
+  }
+
+  function lenAlong(car){
+    if (car.kind === 'M2') return car.h;
+    return car.w;
+  }
+
+  function frontS(car){ return sCoord(car) + lenAlong(car)/2; }
+  function backS(car){  return sCoord(car) - lenAlong(car)/2; }
+
+  function updateCars(dt, sig, g){
+    const slowFactor = 1.0;
+
+    for (const car of cars){
+      car.__needStop =
+        approachingStop(car, g) &&
+        !pastStop(car, g) &&
+        !allowedBySignal(car, sig, g);
+    }
+
+    const lanes = new Map();
+    for (const car of cars){
+      const key = laneKey(car);
+      if (!key) continue;
+
+      if ((car.kind === 'M1L' || car.kind === 'M1R') && Math.abs(car.vx) <= 0.0001) continue;
+      if (car.kind === 'M2' && Math.abs(car.vy) <= 0.0001) continue;
+
+      if (!lanes.has(key)) lanes.set(key, []);
+      lanes.get(key).push(car);
+    }
+
+    for (const arr of lanes.values()){
+      arr.sort((a,b) => sCoord(b) - sCoord(a));
+      for (let i=1; i<arr.length; i++){
+        const leader = arr[i-1];
+        const follower = arr[i];
+        const gap = (sCoord(leader) - lenAlong(leader)/2) - (sCoord(follower) + lenAlong(follower)/2);
+        if (gap < SAFE_GAP){
+          follower.__needStop = true;
+        }
+      }
+    }
+
+    for (const car of cars){
+      if (!car.__needStop){
+        car.x += car.vx * dt * slowFactor;
+        car.y += car.vy * dt * slowFactor;
+      }
+
+      if (!car.turned){
+        // 主線1 往下轉
+        if ((car.kind === 'M1L' || car.kind === 'M1R') && car.route === 'down'){
+          const turnX = g.road.x;
+          if ((car.kind==='M1L' && car.x >= turnX) || (car.kind==='M1R' && car.x <= turnX)){
+            car.turned = true;
+            const sp = Math.abs(car.vx);
+            car.vx = 0; car.vy = sp;
+            car.x = g.lane.stem_out_x[0];
+            car.w = CAR_H; car.h = CAR_W;
+          }
+        }
+
+        // 主線2 轉入主線1
+        if (car.kind === 'M2'){
+          if (car.y <= g.road.y + 10){
+            car.turned = true;
+            const sp = Math.abs(car.vy);
+            car.vy = 0;
+            car.w = CAR_W; car.h = CAR_H;
+
+            if (car.route === 'toLeft'){
+              car.kind = 'M1R';
+              car.route = 'straight';
+              car.vx = -sp;
+              car.y = g.lane.m1_west_y;
+            } else {
+              car.kind = 'M1L';
+              car.route = 'straight';
+              car.vx = sp;
+              car.y = g.lane.m1_east_y;
+            }
+          }
+        }
+      }
+    }
+
+    for (let i=cars.length-1; i>=0; i--){
+      const c = cars[i];
+      if (c.x < -320 || c.x > g.W+320 || c.y < -320 || c.y > g.H+320) cars.splice(i,1);
+    }
+  }
+
+  // ===== Timing tick =====
+  function tick1s(){
+    remaining -= 1;
+    if (remaining > 0) return;
+
+    if (phase === PH.PSEQ){
+      pedIndex += 1;
+      if (pedIndex < pedSteps.length){
+        remaining = pedSteps[pedIndex].dur;
+        return;
+      }
+      enterPhase(PH.AR3);
+      return;
+    }
+
+    const nxt = nextPhase(phase);
+    enterPhase(nxt);
+
+    modeHoldSec += 1;
+
+    if (ui.autoMode?.checked && phase === PH.M1S_G && modeHoldSec >= MIN_HOLD_SEC){
+      const g = geom();
+      const q = measureQueues(g);
+      const want = chooseModeByQueues(q);
+      if (want !== currentAutoMode) applyMode(want);
+    }
+  }
+
+  // ===== Drawing helpers =====
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+  function dashed(x1,y1,x2,y2){
+    ctx.save();
+    ctx.setLineDash([16,10]);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.restore();
+  }
+  function zebra(x,y,w,h,dir){
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    const stripe=6,gap=6;
+    if (dir==='vertical'){
+      for(let yy=y; yy<y+h; yy+=stripe+gap) ctx.fillRect(x,yy,w,stripe);
+    } else {
+      for(let xx=x; xx<x+w; xx+=stripe+gap) ctx.fillRect(xx,y,stripe,h);
+    }
+    ctx.restore();
+  }
+
+  function drawRoad(g){
+    ctx.clearRect(0,0,g.W,g.H);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    ctx.fillRect(0, g.road.y-g.road.h/2, g.W, g.road.h);
+    ctx.fillRect(g.road.x-g.road.w/2, g.road.y, g.road.w, g.H-g.road.y);
+
+    ctx.strokeStyle='rgba(255,255,255,0.16)'; ctx.lineWidth=2;
+    dashed(0, g.road.y, g.W, g.road.y);
+
+    ctx.strokeStyle='rgba(255,255,255,0.13)'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(g.road.x, g.road.y);
+    ctx.lineTo(g.road.x, g.H);
+    ctx.stroke();
+
+    for (const x of [g.lane.stem_out_x[1], g.lane.stem_in_x[0]]){
+      ctx.beginPath();
+      ctx.moveTo(x, g.road.y+8);
+      ctx.lineTo(x, g.H);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=3;
+    ctx.strokeRect(0, g.road.y-g.road.h/2, g.W, g.road.h);
+    ctx.strokeRect(g.road.x-g.road.w/2, g.road.y, g.road.w, g.H-g.road.y);
+
+    zebra(g.xwalk.left.x, g.xwalk.left.y, g.xwalk.left.w, g.xwalk.left.h, 'vertical');
+    zebra(g.xwalk.right.x, g.xwalk.right.y, g.xwalk.right.w, g.xwalk.right.h, 'vertical');
+    zebra(g.xwalk.bottom.x, g.xwalk.bottom.y, g.xwalk.bottom.w, g.xwalk.bottom.h, 'horizontal');
+
+    ctx.strokeStyle='rgba(255,255,255,0.60)'; ctx.lineWidth=4;
+
+    ctx.beginPath();
+    ctx.moveTo(g.stop.m1_left, g.road.y+g.road.h/2-6);
+    ctx.lineTo(g.stop.m1_left, g.road.y+6);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(g.stop.m1_right, g.road.y-g.road.h/2+6);
+    ctx.lineTo(g.stop.m1_right, g.road.y-6);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(g.road.x+6, g.stop.m2_in);
+    ctx.lineTo(g.road.x+g.road.w/2-6, g.stop.m2_in);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(232,238,252,0.78)';
+    ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
+    ctx.fillText('主線1（左來）單線：直行/右轉(往下)（半重疊＋排隊）', 14, g.road.y + 60);
+    ctx.fillText('主線1（右來）單線：直行/左轉(往下)（半重疊＋排隊）', g.W-420, g.road.y - 52);
+    ctx.fillText('主線2（下方進口）左右轉同時（右轉偏多）', g.road.x - 150, g.H-18);
+  }
+
+  function lamp(onCol, on){ return on ? onCol : 'rgba(255,255,255,0.12)'; }
+
+  function draw3Lamp(x,y,state){
+    ctx.save(); ctx.translate(x,y);
+    ctx.fillStyle='rgba(0,0,0,0.45)'; roundRect(-14,-26,28,52,8); ctx.fill();
+    const lamps=[
+      {cy:-14,on:state==='RED',col:'rgba(255,70,70,1)'},
+      {cy:  0,on:state==='YELLOW',col:'rgba(255,210,60,1)'},
+      {cy: 14,on:state==='GREEN',col:'rgba(60,255,140,1)'},
+    ];
+    for(const l of lamps){
+      ctx.beginPath(); ctx.arc(0,l.cy,7,0,Math.PI*2);
+      ctx.fillStyle=lamp(l.col,l.on); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawArrowLamp(x,y,state,dir){
+    ctx.save(); ctx.translate(x,y);
+    ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2);
+    const col = state==='GREEN' ? 'rgba(60,255,140,1)' : (state==='YELLOW' ? 'rgba(255,210,60,1)' : 'rgba(255,255,255,0.12)');
+    ctx.fillStyle=col; ctx.fill();
+    if (state !== 'RED'){
+      ctx.strokeStyle='rgba(0,0,0,0.55)';
+      ctx.lineWidth=2;
+      ctx.beginPath();
+      if (dir==='L'){
+        ctx.moveTo(3,-3); ctx.lineTo(-2,0); ctx.lineTo(3,3);
+        ctx.moveTo(-2,0); ctx.lineTo(4,0);
+      } else {
+        ctx.moveTo(-3,-3); ctx.lineTo(2,0); ctx.lineTo(-3,3);
+        ctx.moveTo(-4,0); ctx.lineTo(2,0);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawPedHead(x,y,state){
+    ctx.save(); ctx.translate(x,y);
+    ctx.fillStyle='rgba(0,0,0,0.42)'; roundRect(-16,-14,32,28,10); ctx.fill();
+    ctx.font='12px ui-monospace, Menlo, Consolas, monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    if (state==='WALK'){ ctx.fillStyle='rgba(60,255,140,0.95)'; ctx.fillText('WALK',0,0); }
+    else if (state==='CLEAR'){ ctx.fillStyle='rgba(255,210,60,0.95)'; ctx.fillText('CLR',0,0); }
+    else { ctx.fillStyle='rgba(255,70,70,0.95)'; ctx.fillText('STOP',0,0); }
+    ctx.restore();
+  }
+
+  function drawCountdown(x,y,sec){
+    ctx.save(); ctx.translate(x,y);
+    ctx.fillStyle='rgba(0,0,0,0.35)'; roundRect(-36,-18,72,36,12); ctx.fill();
+    ctx.fillStyle='rgba(232,238,252,0.95)';
+    ctx.font='16px ui-monospace, Menlo, Consolas, monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(String(sec).padStart(2,'0'), 0, 1);
+    ctx.restore();
+  }
+
+  function drawSignals(sig, g){
+    draw3Lamp(g.stop.m1_left-14,  g.road.y+g.road.h/2-30, sig.m1);
+    draw3Lamp(g.stop.m1_right+14, g.road.y-g.road.h/2+30, sig.m1);
+
+    drawArrowLamp(g.road.x+48, g.stop.m2_in+42, sig.m2, 'L');
+    drawArrowLamp(g.road.x+20, g.stop.m2_in+42, sig.m2, 'R');
+
+    drawCountdown(g.road.x - 34, g.road.y - 60, remaining);
+
+    drawPedHead(g.xwalk.left.x - 10,  g.road.y - 70, sig.pedLeft);
+    drawPedHead(g.xwalk.right.x + 52, g.road.y + 70, sig.pedRight);
+    drawPedHead(g.road.x - 95, g.xwalk.bottom.y + 56, sig.pedBottom);
+  }
+
+  function drawCars(){
+    for (const car of cars){
+      ctx.save();
+      ctx.translate(car.x, car.y);
+
+      if (Math.abs(car.vx) > Math.abs(car.vy)){
+        if (car.vx < 0) ctx.rotate(Math.PI);
+      } else {
+        if (car.vy < 0) ctx.rotate(-Math.PI/2);
+        else if (car.vy > 0) ctx.rotate(Math.PI/2);
+      }
+
+      if (car.kind === 'M2') ctx.fillStyle = 'rgba(170,160,255,0.95)';
+      else if (car.route === 'down') ctx.fillStyle = 'rgba(100,240,200,0.95)';
+      else ctx.fillStyle = 'rgba(120,200,255,0.95)';
+
+      ctx.fillRect(-car.w/2, -car.h/2, car.w, car.h);
+
+      ctx.fillStyle='rgba(0,0,0,0.35)';
+      ctx.fillRect(-car.w/2 + 4, -car.h/2 + 3, car.w*0.4, car.h-6);
+
+      ctx.fillStyle='rgba(255,80,80,0.8)';
+      ctx.fillRect(car.w/2 - 4, -car.h/2 + 3, 3, car.h-6);
+
+      ctx.restore();
+    }
+  }
+
+  function phaseLabel(sig){
+    if (phase === PH.PSEQ){
+      return [`行人：${sig.pedWhich} ${sig.pedMode}`, sig.pedMode==='WALK' ? 'green' : 'yellow'];
+    }
+    switch(phase){
+      case PH.M1S_G: return ['主線1 直行綠（只放直行）','green'];
+      case PH.M1T_G: return ['主線1 轉彎綠（半重疊：直行+轉彎）','green'];
+      case PH.M1S_Y: return ['主線1 黃（直行段）','yellow'];
+      case PH.M1T_Y: return ['主線1 黃（轉彎段）','yellow'];
+      case PH.M2_G:  return ['主線2 混放綠（左右轉同時）','green'];
+      case PH.M2_Y:  return ['主線2 黃','yellow'];
+      default:       return ['全紅（AR）','red'];
+    }
+  }
+
+  function updateUI(sig){
+    const [txt, color] = phaseLabel(sig);
+    ui.phaseText.textContent = 'Phase：' + txt;
+    ui.phaseDot.className = 'dot ' + color;
+
+    ui.sigM1.textContent = sig.m1;
+    ui.sigM2.textContent = sig.m2;
+    ui.sigPed.textContent = `L:${sig.pedLeft} R:${sig.pedRight} B:${sig.pedBottom} (${sig.pedWhich}-${sig.pedMode})`;
+    ui.count.textContent = remaining;
+
+    if (ui.qText){
+      const g = geom();
+      const q = measureQueues(g);
+      ui.qText.textContent = `M1T:${q.m1TurnQ} M1S:${q.m1StraightQ} M2R:${q.m2RightQ} (M2:${q.m2Q})`;
+    }
+  }
+
+  // Controls / Loop
+  let running = false; // presentation mode default
+  let acc = 0;
+  let last = performance.now();
+  let spawnAcc = 0;
+
+  function softApply(){
+    if (phase === PH.PSEQ){
+      pedSteps = buildPedSteps();
+      pedIndex = Math.min(pedIndex, Math.max(0, pedSteps.length-1));
+      remaining = Math.min(remaining, pedSteps[pedIndex]?.dur ?? remaining);
+      return;
+    }
+    remaining = Math.min(remaining, durationForPhase(phase));
+  }
+
+  function applyConfigAndNormalize(cfg){
+    applyConfigToUI(cfg);
+
+    // ✅ 行人秒數固定
+    ui.pLeftOn.checked = true;  ui.pLeftWalk.value = 10; ui.pLeftClr.value = 6;
+    ui.pRightWalk.value = 10;   ui.pRightClr.value = 6;
+    ui.pBottomOn.checked = true;ui.pBottomWalk.value = 20;ui.pBottomClr.value = 8;
+
+    softApply();
+  }
+
+  // ===== 事件：參數調整 =====
+  for (const el of [
+    ui.tM1SG, ui.tM1TG, ui.tM1Y, ui.tM2G, ui.tM2Y, ui.tAR, ui.spawn,
+    ui.pLeftOn, ui.pBottomOn,
+    ui.pLeftWalk, ui.pLeftClr, ui.pRightWalk, ui.pRightClr, ui.pBottomWalk, ui.pBottomClr,
+    ui.autoMode
+  ]) el.addEventListener('change', softApply);
+
+  ui.autoMode?.addEventListener('change', () => {
+    if (ui.autoMode.checked){
+      setModeButtonActive(currentAutoMode);
+    }
+    syncModeControls();
+  });
+
+  // ✅ 手動早晚：按下就套用並關 Auto
+  ui.btnMorning?.addEventListener('click', () => {
+    ui.autoMode.checked = false;
+    applyMode('AM');
+    syncModeControls();
+  });
+  ui.btnEvening?.addEventListener('click', () => {
+    ui.autoMode.checked = false;
+    applyMode('PM2');
+    syncModeControls();
+  });
+
+  // ✅ 右斑馬線 有/無：一鍵切換
+  ui.btnRightXwalkOn?.addEventListener('click', () => setRightXwalk(true));
+  ui.btnRightXwalkOff?.addEventListener('click', () => setRightXwalk(false));
+
+  // （右卡片灰掉時會禁用互動，所以這個不會跟按鈕打架）
+  ui.pRightOn?.addEventListener('change', () => setRightXwalk(ui.pRightOn.checked));
+
+  ui.toggle.addEventListener('click', () => {
+    running = !running;
+    ui.toggle.textContent = running ? '暫停' : '繼續';
+  });
+
+  ui.reset.addEventListener('click', () => {
+    cars.length = 0;
+    pedSteps = buildPedSteps(); pedIndex = 0;
+    enterPhase(PH.M1S_G);
+    modeHoldSec = 0;
+    spawnAcc = 0;
+  });
+
+  function step(now){
+    resizeCanvasToCSS();
+    const g = geom();
+    const dt = Math.min(0.05, (now-last)/1000);
+    last = now;
+
+    if (running){
+      acc += dt;
+      while (acc >= 1){ acc -= 1; tick1s(); }
+
+      spawnAcc += dt;
+      while (spawnAcc >= 1){
+        spawnAcc -= 1;
+        spawnCar(g);
+      }
+    }
+
+    const sig = signals();
+    if (running) updateCars(dt, sig, g);
+
+    drawRoad(g);
+    drawSignals(sig, g);
+    drawCars();
+    updateUI(sig);
+
+    requestAnimationFrame(step);
+  }
+
+  // ===== start =====
+  (async function init(){
+    try{
+      const cfg = await loadConfig();
+      applyConfigAndNormalize(cfg);
+    }catch(e){
+      console.warn('⚠️ Using default UI values (config not loaded):', e);
+    }
+
+    // ✅ 行人秒數固定（再保險一次）
+    ui.pLeftOn.checked = true;  ui.pLeftWalk.value = 10; ui.pLeftClr.value = 6;
+    ui.pRightWalk.value = 10;   ui.pRightClr.value = 6;
+    ui.pBottomOn.checked = true;ui.pBottomWalk.value = 20;ui.pBottomClr.value = 8;
+
+    // ✅ 預設：平峰
+    applyMode('MID');
+
+    // ✅ 預設：有右斑馬線（你要預設無就改 false）
+    setRightXwalk(true);
+
+    pedSteps = buildPedSteps();
+    pedIndex = 0;
+
+    enterPhase(PH.M1S_G);
+    syncModeControls();
+
+    requestAnimationFrame(step);
+    window.addEventListener('resize', () => resizeCanvasToCSS());
+  })();
+})();
+
+// ===== 科技交警（COP）語音＋提示音 Patch（最小侵入）=====
+let __copAudioCtx=null;
+function copBeep(){
+  try{
+    if(!__copAudioCtx) __copAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=__copAudioCtx.createOscillator();
+    const g=__copAudioCtx.createGain();
+    o.type='sine'; o.frequency.value=880;
+    g.gain.value=0.08;
+    o.connect(g).connect(__copAudioCtx.destination);
+    o.start(); o.stop(__copAudioCtx.currentTime+0.18);
+  }catch(e){}
+}
+
+let __copSpeaking=false;
+function copSpeak(msg){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    if(__copSpeaking) return;
+    __copSpeaking=true;
+    const u=new SpeechSynthesisUtterance(msg);
+    u.lang='zh-TW'; u.rate=1.0; u.pitch=1.0; u.volume=1.0;
+    u.onend=()=>{__copSpeaking=false};
+    u.onerror=()=>{__copSpeaking=false};
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+// ===== DEMO：手動啟動科技交警（不影響原邏輯）=====
+window.__triggerCOP = function(){
+  // ▶️ 啟動車流（簡報模式）
+  if (typeof running !== 'undefined') {
+    running = true;
+    console.log('[Traffic] running = true');
+  }
+
+  // ▶️ 保證主循環在跑
+  if (typeof step === 'function') {
+    requestAnimationFrame(step);
+  }
+
+  // ===== 正式示範：科技交警 Stage2 + 延長綠燈 =====
+  if (typeof cop === 'object') {
+    cop.stage = 2;
+    cop.active = true;
+    cop.reason = 'demo';
+    if (typeof CTRL === 'object' && typeof CTRL.M1S_MAX === 'number' && typeof CTRL.COP_MAX_GREEN_BOOST === 'number') {
+      cop.boostedMax = CTRL.M1S_MAX + CTRL.COP_MAX_GREEN_BOOST;
+    }
+  }
+
+  // 🔊 科技執法提示
+  if (typeof copBeep === 'function') copBeep();
+  if (typeof copSpeak === 'function') copSpeak('科技執法啟動，請依指示通行');
+
+  console.log('[COP] demo stage2, boostedMax=', cop && cop.boostedMax);
+};
+
+
+// ===== DEMO 視覺強化：限速（讓延長綠燈有感）=====
+if (typeof updateCars === 'function'){
+  const __updateCars = updateCars;
+  updateCars = function(dt, sig, g){
+    try{
+      // 若有 cars 陣列，限制最高速
+      if (Array.isArray(window.cars)){
+        for (const c of window.cars){
+          if (typeof c.v === 'number') c.v = Math.min(c.v, 120);
+        }
+      }
+    }catch(e){}
+    return __updateCars(dt, sig, g);
+  }
+}
+
+</script>
+
+<!-- ===== 科技執法示範按鈕 ===== -->
+<button id="btnCopDemo"
+  style="position:fixed;right:16px;bottom:16px;z-index:9999;
+         padding:12px 14px;border-radius:10px;
+         border:1px solid rgba(255,255,255,.25);
+         background:#7a1f2b;color:#fff;cursor:pointer;
+         box-shadow:0 8px 24px rgba(0,0,0,.35);">
+  🚨 科技執法啟動（示範）
+</button>
+<script>
+(function(){
+  const btn=document.getElementById('btnCopDemo');
+  if(!btn) return;
+  btn.addEventListener('click', function(){
+    if (typeof window.__triggerCOP === 'function'){
+      window.__triggerCOP();
+    } else {
+      alert('COP demo function not found');
+    }
+  });
+})();
+
+// ===== DEMO 視覺強化：限速（讓延長綠燈有感）=====
+if (typeof updateCars === 'function'){
+  const __updateCars = updateCars;
+  updateCars = function(dt, sig, g){
+    try{
+      // 若有 cars 陣列，限制最高速
+      if (Array.isArray(window.cars)){
+        for (const c of window.cars){
+          if (typeof c.v === 'number') c.v = Math.min(c.v, 120);
+        }
+      }
+    }catch(e){}
+    return __updateCars(dt, sig, g);
+  }
+}
+
+</script>
+
+</body>
+</html>
